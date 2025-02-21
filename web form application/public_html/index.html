@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Employee Form</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h2>Employee Form</h2>
+        <form id="empForm">
+            <div class="form-group">
+                <label for="empId">Employee ID:</label> <label id="empIdMsg"></label>
+                <input type="text" class="form-control" id="empId" placeholder="Enter Employee ID" required>
+            </div>
+            <div class="form-group">
+                <label for="empName">Employee Name:</label>
+                <input type="text" class="form-control" id="empName" placeholder="Enter Employee Name">
+            </div>
+            <div class="form-group">
+                <label for="empSalary">Salary:</label>
+                <input type="number" class="form-control" id="empSalary" placeholder="Enter Salary">
+            </div>
+            <div class="form-group">
+                <label for="empHRA">HRA:</label>
+                <input type="number" class="form-control" id="empHRA" placeholder="Enter HRA">
+            </div>
+            <div class="form-group">
+                <label for="empDA">DA:</label>
+                <input type="number" class="form-control" id="empDA" placeholder="Enter DA">
+            </div>
+            <div class="form-group">
+                <label for="empDeduction">Deduction:</label>
+                <input type="number" class="form-control" id="empDeduction" placeholder="Enter Deduction">
+            </div>
+
+            <input type="button" class="btn btn-primary" id="empSave" value="Save" onclick="saveEmployee();" disabled>
+            <input type="button" class="btn btn-warning" id="empChange" value="Change" onclick="updateEmployee();" disabled>
+            <input type="button" class="btn btn-danger" id="empReset" value="Reset" onclick="resetForm();" disabled>
+        </form>
+    </div>
+
+    <script>
+        const connToken = "90934334|-31949203511562046|90957360";
+        const dbBaseUrl = "http://api.login2explore.com:5577";
+        const dbName = "EMP-DB";
+        const relName = "EmpData";
+
+        $("#empId").focus();
+
+        function validateAndGetFormData() {
+            var empId = $("#empId").val();
+            var empName = $("#empName").val();
+            var empSalary = $("#empSalary").val();
+            var empHRA = $("#empHRA").val();
+            var empDA = $("#empDA").val();
+            var empDeduction = $("#empDeduction").val();
+
+            if (empId === "" || empName === "" || empSalary === "" || empHRA === "" || empDA === "" || empDeduction === "") {
+                alert("All fields are required!");
+                return "";
+            }
+
+            return JSON.stringify({
+                id: empId,
+                name: empName,
+                salary: empSalary,
+                hra: empHRA,
+                da: empDA,
+                deduction: empDeduction
+            });
+        }
+
+        function createRequest(cmd, jsonObj) {
+            return JSON.stringify({
+                token: connToken,
+                dbName: dbName,
+                cmd: cmd,
+                rel: relName,
+                jsonStr: jsonObj
+            });
+        }
+
+        function executeCommand(reqString, apiEndPoint) {
+            var url = dbBaseUrl + apiEndPoint;
+            var jsonObj;
+            $.ajax({
+                type: "POST",
+                url: url,
+                data: reqString,
+                async: false,
+                success: function (result) {
+                    jsonObj = JSON.parse(result);
+                },
+                error: function (result) {
+                    jsonObj = JSON.parse(result.responseText);
+                }
+            });
+            return jsonObj;
+        }
+
+        function resetForm() {
+            $("#empForm")[0].reset();
+            $("#empId").prop("disabled", false);
+            $("#empSave, #empChange, #empReset").prop("disabled", true);
+            $("#empId").focus();
+        }
+
+        function checkEmpId() {
+            var empId = $("#empId").val();
+            if (empId === "") return;
+
+            var getReq = createRequest("GET", JSON.stringify({ id: empId }));
+            var resultObj = executeCommand(getReq, "/api/irl");
+
+            if (resultObj.status === 400) {
+                $("#empSave, #empReset").prop("disabled", false);
+                $("#empChange").prop("disabled", true);
+            } else {
+                var data = resultObj.data.record;
+                $("#empName").val(data.name);
+                $("#empSalary").val(data.salary);
+                $("#empHRA").val(data.hra);
+                $("#empDA").val(data.da);
+                $("#empDeduction").val(data.deduction);
+                $("#empId").prop("disabled", true);
+                $("#empChange, #empReset").prop("disabled", false);
+                $("#empSave").prop("disabled", true);
+            }
+        }
+
+        function saveEmployee() {
+            var jsonStr = validateAndGetFormData();
+            if (jsonStr === "") return;
+
+            var putReqStr = createRequest("PUT", jsonStr);
+            var resultObj = executeCommand(putReqStr, "/api/iml");
+
+            alert(JSON.stringify(resultObj));
+            resetForm();
+        }
+
+        function updateEmployee() {
+            var jsonStr = validateAndGetFormData();
+            if (jsonStr === "") return;
+
+            var updateReqStr = createRequest("UPDATE", jsonStr);
+            var resultObj = executeCommand(updateReqStr, "/api/iml");
+
+            alert(JSON.stringify(resultObj));
+            resetForm();
+        }
+
+        $("#empId").on("blur", checkEmpId);
+    </script>
+</body>
+</html>
